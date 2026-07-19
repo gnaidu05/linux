@@ -2,3 +2,4 @@ secrets/
 data/
 desktop/vendor/
 .pw-cache/
+__pycache__/
