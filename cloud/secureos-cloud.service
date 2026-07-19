@@ -1,0 +1,22 @@
+[Unit]
+Description=SecureOS cloud desktop (QEMU + noVNC)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+# Adjust the repo path and disk/ISO to your deployment
+WorkingDirectory=/opt/secureos
+ExecStart=/opt/secureos/cloud/run-cloud.sh --disk /opt/secureos/secureos.qcow2
+ExecStop=/opt/secureos/cloud/stop-cloud.sh
+Restart=on-failure
+RestartSec=5
+
+# Hardening for the host-side service
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

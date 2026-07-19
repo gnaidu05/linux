@@ -4,3 +4,5 @@ build.log
 work/
 out/
 *.iso
+cloud/state/
+*.qcow2
