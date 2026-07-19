@@ -1,5 +1,10 @@
 # SecureOS — a hardened, fully functional Linux desktop OS
 
+> **Also in this repo:** [`cloudpc/`](cloudpc/) — a Docker-based,
+> browser-accessible cloud desktop service (web login, per-user isolated
+> XFCE sessions over noVNC/HTTPS, hardened containers). See
+> [cloudpc/README.md](cloudpc/README.md).
+
 SecureOS is a complete, reproducible build system that produces a **bootable
 hybrid BIOS/UEFI Linux ISO** based on Debian 12 (bookworm), with:
 

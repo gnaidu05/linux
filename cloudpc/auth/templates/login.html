@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudPC — Sign in</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; display: flex; min-height: 100vh;
+         align-items: center; justify-content: center; margin: 0;
+         background: #101418; color: #e8eaed; }
+  .card { background: #1b2127; padding: 2.2rem 2.6rem; border-radius: 12px;
+          box-shadow: 0 8px 30px rgba(0,0,0,.45); width: 20rem; }
+  h1 { font-size: 1.25rem; margin: 0 0 1.4rem; }
+  label { display: block; font-size: .85rem; margin: .8rem 0 .25rem; color: #9aa4ae; }
+  input { width: 100%; box-sizing: border-box; padding: .55rem .7rem;
+          border-radius: 8px; border: 1px solid #333c44; background: #0e1216;
+          color: inherit; font-size: 1rem; }
+  button { margin-top: 1.3rem; width: 100%; padding: .6rem; border: 0;
+           border-radius: 8px; background: #2f6fed; color: white;
+           font-size: 1rem; cursor: pointer; }
+  button:hover { background: #245ac7; }
+  .err { background: #3a1d20; border: 1px solid #7a2e34; color: #ffb4b4;
+         padding: .6rem .8rem; border-radius: 8px; font-size: .85rem;
+         margin-bottom: .6rem; }
+  .hint { font-size: .75rem; color: #6b757f; margin-top: 1.2rem; text-align: center; }
+</style>
+</head>
+<body>
+  <form class="card" method="post" action="/login" autocomplete="off">
+    <h1>CloudPC &mdash; Sign in</h1>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+    <label for="u">Username</label>
+    <input id="u" name="username" required autofocus
+           pattern="[a-z_][a-z0-9_-]*" maxlength="32">
+    <label for="p">Password</label>
+    <input id="p" name="password" type="password" required maxlength="128">
+    <button type="submit">Sign in</button>
+    <p class="hint">Authorized users only. All access is logged.</p>
+  </form>
+</body>
+</html>

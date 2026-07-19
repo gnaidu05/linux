@@ -1,0 +1,118 @@
+# CloudPC — browser-accessible cloud desktops
+#
+# Topology:
+#   [browser] --443/TLS--> proxy (nginx) --auth_request--> auth (portal)
+#                             |--/desktop/admin/--> desktop-admin (XFCE+noVNC)
+#                             |--/desktop/user/ --> desktop-user  (XFCE+noVNC)
+#
+# Isolation: each desktop sits on its own internal network shared only with
+# the proxy; desktops cannot reach each other or the internet-facing edge.
+# Only the proxy publishes a port.
+
+name: cloudpc
+
+services:
+  proxy:
+    build: ./proxy
+    image: cloudpc/proxy
+    restart: unless-stopped
+    ports:
+      - "443:8443"
+    volumes:
+      - ./secrets/tls:/etc/cloudpc/tls:ro
+      - ./data/nginx-desktops:/etc/nginx/conf.d/desktops:ro
+      - ./data/log/nginx:/var/log/nginx
+    networks: [edge, auth_net, admin_net, user_net]
+    depends_on: [auth, desktop-admin, desktop-user]
+    read_only: true
+    tmpfs:
+      - /tmp/nginx:size=64m
+      - /run/nginx:size=8m
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    # nginx master starts as root to bind workers as www-data
+    cap_add: [SETUID, SETGID, CHOWN, DAC_OVERRIDE]
+    mem_limit: 256m
+    pids_limit: 128
+
+  auth:
+    build: ./auth
+    image: cloudpc/auth
+    restart: unless-stopped
+    volumes:
+      - ./data/auth:/data
+      - ./data/log/cloudpc:/var/log/cloudpc
+    environment:
+      - DATA_DIR=/data
+      - AUTH_LOG=/var/log/cloudpc/auth.log
+    networks: [auth_net]
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 512m
+    pids_limit: 64
+
+  desktop-admin:
+    build:
+      context: ./desktop
+      args: { DESKTOP_USER: admin, ADMIN: "1" }
+      secrets: [unix_password]
+    image: cloudpc/desktop-admin
+    restart: unless-stopped
+    hostname: cloudpc-admin
+    volumes:
+      - home-admin:/home/admin
+    networks: [admin_net]
+    tmpfs:
+      - /tmp:size=512m
+      - /run:size=16m
+    shm_size: 1g
+    # sudo (setuid) must work for the admin, so no-new-privileges is OFF
+    # here and the minimal capabilities for PAM/sudo are added back.
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID, AUDIT_WRITE, CHOWN, DAC_OVERRIDE, FOWNER]
+    mem_limit: 3g
+    cpus: 2.0
+    pids_limit: 1024
+
+  desktop-user:
+    build:
+      context: ./desktop
+      args: { DESKTOP_USER: user, ADMIN: "0" }
+    image: cloudpc/desktop-user
+    restart: unless-stopped
+    hostname: cloudpc-user
+    volumes:
+      - home-user:/home/user
+    networks: [user_net]
+    tmpfs:
+      - /tmp:size=512m
+      - /run:size=16m
+    shm_size: 1g
+    # standard user: strictest profile — no sudo by design
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    mem_limit: 3g
+    cpus: 2.0
+    pids_limit: 1024
+
+secrets:
+  unix_password:
+    file: ./secrets/admin_unix_password
+
+networks:
+  edge:
+  # auth portal needs no outbound access at all
+  auth_net:
+    internal: true
+  # desktop networks are NOT internal: sessions need internet egress for
+  # browsing. Nothing is published inbound; the only way in is the proxy,
+  # and desktops on separate networks cannot reach each other.
+  admin_net:
+  user_net:
+
+volumes:
+  home-admin:
+  home-user:
