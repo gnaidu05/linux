@@ -1,0 +1,11 @@
+# SecureOS sudo policy
+# Members of group sudo may run any command after authenticating.
+Defaults        use_pty
+Defaults        logfile="/var/log/sudo.log"
+Defaults        log_input, log_output
+Defaults        iolog_dir="/var/log/sudo-io"
+Defaults        passwd_timeout=1
+Defaults        timestamp_timeout=5
+Defaults        insults = off
+Defaults        lecture = once
+%sudo   ALL=(ALL:ALL) ALL

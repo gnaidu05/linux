@@ -1,0 +1,23 @@
+# XFCE desktop environment (lean, fast)
+xfce4
+xfce4-goodies
+xfce4-terminal
+lightdm
+lightdm-gtk-greeter
+xorg
+thunar
+thunar-archive-plugin
+network-manager-gnome
+pulseaudio
+pavucontrol
+blueman
+xdg-utils
+xdg-user-dirs
+fonts-dejavu
+fonts-liberation2
+fonts-noto-core
+gvfs
+gvfs-backends
+policykit-1
+system-config-printer
+cups
