@@ -1,0 +1,21 @@
+# Security stack
+ufw
+apparmor
+apparmor-profiles
+apparmor-utils
+fail2ban
+auditd
+audispd-plugins
+libpam-pwquality
+libpam-tmpdir
+unattended-upgrades
+apt-listchanges
+needrestart
+openssh-server
+libpam-modules
+sudo
+acl
+rkhunter
+chkrootkit
+apt-transport-https
+haveged

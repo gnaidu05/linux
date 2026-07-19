@@ -1,0 +1,16 @@
+# GNOME desktop environment (full-featured)
+gnome-core
+gnome-tweaks
+gnome-software
+gdm3
+xorg
+pulseaudio
+xdg-utils
+xdg-user-dirs
+fonts-dejavu
+fonts-liberation2
+fonts-noto-core
+gvfs
+gvfs-backends
+cups
+system-config-printer
