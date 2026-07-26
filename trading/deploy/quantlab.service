@@ -1,0 +1,52 @@
+[Unit]
+Description=quantlab trading-research service (paper simulation only)
+Documentation=file:/opt/quantlab/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -m quantlab.live.service --config /etc/quantlab/config.json
+WorkingDirectory=/opt/quantlab
+Environment=PYTHONPATH=/opt/quantlab
+Environment=PYTHONUNBUFFERED=1
+
+# 24/7: come back from crashes, and from reboots via the [Install] section.
+Restart=always
+RestartSec=10s
+# The loop finishes the cycle in flight on SIGTERM; give it room to land a write.
+TimeoutStopSec=90s
+
+# Run as a dedicated unprivileged account. StateDirectory creates and owns
+# /var/lib/quantlab, which is the only path the service can write.
+DynamicUser=yes
+StateDirectory=quantlab
+UMask=0077
+
+# Hardening. This service reads a public HTTPS endpoint and writes JSON to its
+# state directory; it needs nothing else, so nothing else is permitted.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target
