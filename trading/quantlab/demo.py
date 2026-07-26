@@ -20,74 +20,22 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from .alerts.rules import drawdown_alert, scan_threshold_alerts
-from .backtest.engine import BarContext, run_backtest
-from .backtest.execution import ExecutionModel, Order
+from .backtest.engine import run_backtest
+from .backtest.execution import ExecutionModel
 from .backtest.metrics import compute_metrics
 from .backtest.validation import walk_forward
 from .data.sources import synthetic_bars
 from .data.types import Bar
-from .indicators import atr, donchian_high, donchian_low
 from .journal.stats import build_journal
 from .news.aggregator import aggregate
 from .news.models import Headline
 from .scanner.criteria import Universe
 from .scanner.engine import Scanner
+from .strategies import DonchianBreakout
 
 SYMBOLS = {"BTC-USD": 1, "ETH-USD": 2, "SOL-USD": 3, "AAPL": 4, "EURUSD": 5}
 N_BARS = 900
 EXECUTION = ExecutionModel(fee_bps=5.0, slippage_bps=5.0)
-
-
-class DonchianBreakout:
-    """Long-only channel breakout, sized at a fixed fraction of equity.
-
-    Buys when the close exceeds the prior ``entry_window``-bar high and exits
-    when it drops below the prior ``exit_window``-bar low. There is nothing
-    special about these rules; they are here because they are simple enough to
-    verify by hand.
-    """
-
-    def __init__(self, entry_window: int = 20, exit_window: int = 10, equity_fraction: float = 0.2):
-        self.entry_window = entry_window
-        self.exit_window = exit_window
-        self.equity_fraction = equity_fraction
-
-    def on_bar(self, ctx: BarContext) -> list[Order]:
-        bars = ctx.history
-        if len(bars) < max(self.entry_window, self.exit_window) + 15:
-            return []
-        close = bars[-1].close
-        position = ctx.position()
-
-        if position == 0:
-            breakout = donchian_high(bars, self.entry_window, exclude_current=True)[-1]
-            if close > breakout:
-                stop_distance = atr(bars, 14)[-1] * 2.0
-                qty = (ctx.portfolio.equity() * self.equity_fraction) / close
-                return [
-                    Order(
-                        symbol=ctx.symbol,
-                        side="buy",
-                        qty=qty,
-                        setup=f"donchian_{self.entry_window}",
-                        timeframe="1d",
-                        risk_per_unit=stop_distance,
-                    )
-                ]
-            return []
-
-        exit_level = donchian_low(bars, self.exit_window, exclude_current=True)[-1]
-        if close < exit_level:
-            return [
-                Order(
-                    symbol=ctx.symbol,
-                    side="sell",
-                    qty=position,
-                    setup=f"donchian_{self.entry_window}",
-                    timeframe="1d",
-                )
-            ]
-        return []
 
 
 def build_bars() -> dict[str, list[Bar]]:

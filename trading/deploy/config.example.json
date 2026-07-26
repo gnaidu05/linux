@@ -1,0 +1,21 @@
+{
+  "symbols": ["BTC-USD", "ETH-USD", "SOL-USD", "LTC-USD", "LINK-USD"],
+  "granularity": 3600,
+  "interval_seconds": 300,
+  "state_dir": "/var/lib/quantlab",
+
+  "paper_initial_cash": 100000.0,
+  "fee_bps": 5.0,
+  "slippage_bps": 5.0,
+
+  "entry_window": 20,
+  "exit_window": 10,
+  "equity_fraction": 0.2,
+
+  "alert_min_score": 0.75,
+  "alert_drawdown_limit": 5000.0,
+  "scan_top_n": 5,
+
+  "request_timeout": 20.0,
+  "max_backoff_seconds": 900
+}

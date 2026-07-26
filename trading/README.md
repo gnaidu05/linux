@@ -14,10 +14,12 @@ cannot support.
 - Not a price oracle. Nothing here forecasts direction, magnitude, or a
   probability of profit, and no such feature is planned. A language model
   reading a chart cannot supply one either.
-- Not connected to anything. There is no broker client, no exchange client, no
-  network call, and no credential handling in the package.
-  `tests/test_safety.py` asserts that across every source file, so a later edit
-  cannot lose the property quietly.
+- Not connected to a broker. There is no broker client, no exchange client, no
+  credential handling, and no code that could place, modify, or cancel an order.
+  The one file that opens a network connection, `quantlab/live/feed.py`, issues
+  read-only GET requests to a public market-data endpoint that requires no
+  account. `tests/test_safety.py` asserts both properties against every source
+  file, so a later edit cannot lose them quietly.
 - Not a source of confidence numbers without a stated method. Where a score
   exists, its formula and its raw inputs are printed alongside it.
 
@@ -26,7 +28,7 @@ cannot support.
 ```bash
 cd trading
 pip install -e '.[dev]'     # or just: pip install pytest
-python -m pytest -q         # 196 tests
+python -m pytest -q         # 279 tests
 python -m quantlab.demo     # reproducible end-to-end run
 ```
 
@@ -145,6 +147,45 @@ Every rendered alert ends with:
 > Advisory only. This is a rule firing on past data, not a recommendation, a
 > forecast, or an order.
 
+### 6. Live service — `quantlab.live`
+
+Runs the four research modules continuously against live public market data,
+paper-trading the strategy. "Live" means live *data* and *continuous
+operation* — not live execution.
+
+```bash
+python -m quantlab.live.service --once             # one cycle, then exit
+python -m quantlab.live.service --config c.json    # run until stopped
+sudo deploy/install.sh                             # 24/7 under systemd
+```
+
+A cycle fetches closed bars, screens the universe, advances the paper broker,
+rebuilds the journal from accumulated fills, evaluates the alert rules, and
+writes everything to the state directory as plain JSON. The loop wakes on an
+interval, backs off exponentially when the venue is unreachable, and finishes
+the cycle in flight before stopping on `SIGTERM`, so a restart never interrupts
+a state write.
+
+Three things about it that are easy to get wrong and are tested here:
+
+- **Partial candles are dropped.** The newest candle a venue reports is still
+  forming; feeding it to a strategy is live trading's version of look-ahead.
+- **Bar timestamps are converted from the venue's start time to close time**, to
+  match `Bar.ts` everywhere else. Getting this wrong shifts every indicator by
+  one bar.
+- **The paper record starts when the service does.** The first cycle adopts the
+  newest closed bar and places no trades, so a track record is never back-filled
+  over history the service was not running for.
+
+Paper fills use the same `ExecutionModel` as the backtester, so a divergence
+between backtest and paper comes from the data, not from two simulators
+disagreeing. They are still simulated fills — no venue confirmed any of them.
+
+The public feed covers **crypto only**. Equities and FX need a vendor API with
+an account behind it; none is configured, so those universes stay on CSVs you
+supply. See [`deploy/README.md`](deploy/README.md) for operation and
+[`LIMITATIONS.md`](LIMITATIONS.md) for what a paper record is worth.
+
 ## Bringing your own data
 
 `load_csv_bars(path, symbol)` reads `ts,open,high,low,close,volume`, where `ts`
@@ -167,6 +208,9 @@ quantlab/
   journal/       Fill and ClosedTrade, FIFO matcher, realized statistics
   news/          Headline, keyword tagging, dedupe, digest
   alerts/        Advisory rules over the above
+  strategies.py  DonchianBreakout, shared by the demo and the live service
+  live/          Read-only feed, paper broker, cycle runner, supervisor loop
   demo.py        Reproducible end-to-end run
-tests/           196 tests, including causality, no-look-ahead, and safety checks
+deploy/          systemd unit, example config, installer
+tests/           279 tests, including causality, no-look-ahead, and safety checks
 ```

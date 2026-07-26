@@ -135,12 +135,82 @@ there is not one.
 `tests/test_news.py::test_digest_exposes_no_sentiment_or_score_field` keeps it
 that way.
 
+## Running continuously on live data
+
+The 24/7 service (`quantlab.live`) changes what data the toolkit sees. It does
+not change what the numbers mean, and it introduces failure modes of its own.
+
+### Partial candles
+
+The newest candle a venue reports is almost always still forming: its high, low,
+close and volume will all change before the period ends. Feeding it to a scanner
+or a strategy is live trading's version of look-ahead bias, and it is the
+easiest way to make a paper record look better than it is — the strategy
+effectively sees where the bar ended up before deciding.
+
+`feed.parse_candles` drops any candle whose close time has not passed, and
+`tests/test_live_feed.py::test_still_forming_candle_is_dropped` asserts it. The
+venue also reports each candle by its *start* time while this package defines
+`Bar.ts` as the *close* time; the feed adds one granularity on the way in. That
+conversion is asserted too, because getting it wrong shifts every indicator by
+one bar.
+
+### The paper record is a forward sample, and a small one
+
+On its first cycle the paper broker adopts the newest closed bar as its starting
+point and places no trades. It never back-fills a track record over history it
+was not actually running for. That is the honest construction, and it means the
+record starts at zero trades and grows slowly — at hourly bars, a handful of
+round trips a month.
+
+Everything in the "statistics themselves" section above applies with more force
+here, because the sample is smaller. A paper record with 12 closed trades
+supports essentially no conclusion about expectancy.
+
+### Paper fills are still simulated fills
+
+The paper broker applies the same `ExecutionModel` as the backtester: a flat
+basis-point fee and a flat basis-point concession, filling at the next bar's
+open. No venue confirmed any of it. Everything in the "fills, fees, and
+slippage" section still applies — no queue position, no partial fills, no
+impact, no borrow. A paper record is a backtest that happens to be running
+forward in time on data you cannot re-fit to; that is genuinely more informative
+than a backtest, and it is still not a live track record.
+
+### Continuous operation does not accumulate evidence faster than time passes
+
+Running 24/7 does not make results converge sooner. Waking every five minutes on
+hourly bars produces twelve cycles per bar, eleven of which do nothing but
+refresh a heartbeat. The number of independent observations is set by the bar
+size and the calendar, not by the polling interval.
+
+### Data coverage
+
+The live feed reads the public Coinbase Exchange candles endpoint, which lists
+**crypto only**. Equities and FX need a vendor API with an account behind it;
+none is configured, so those universes stay on whatever CSVs you supply through
+`load_csv_bars`. A "24/7" schedule is also literally correct only for crypto —
+equities and FX have sessions, and a service polling them around the clock would
+spend most of its cycles re-reading a closed market.
+
 ## Execution safety
 
 Simulation is the only execution path in this package. There is no broker
-client, no exchange client, no network call, and no credential handling
-anywhere in `quantlab`. `tests/test_safety.py` asserts that against every source
-file in the package, so the property cannot be lost quietly by a later edit.
+client, no exchange client, and no credential handling anywhere in `quantlab`,
+and no code that could place, modify, or cancel an order at a venue.
+`tests/test_safety.py` asserts all of that against every source file, so the
+property cannot be lost quietly by a later edit.
+
+Network access exists in exactly one file, `quantlab/live/feed.py`, and it is
+read-only: GET requests to a public endpoint that requires no account, with no
+authentication header and no request body. The research core — data, indicators,
+scanner, backtest, journal, news, alerts — remains entirely network-free, so a
+backtest or a journal run cannot depend on anything outside the machine. Both
+properties are asserted in `tests/test_safety.py`.
+
+The service heartbeat carries `"mode": "paper"` and
+`"live_order_routing": false` in every status document it writes, so anything
+consuming that file sees the mode alongside the numbers.
 
 The alert layer is advisory. It renders a notice to that effect on every alert
 it produces.

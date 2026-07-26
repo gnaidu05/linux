@@ -4,7 +4,8 @@ import pytest
 
 from quantlab.backtest.engine import run_backtest
 from quantlab.backtest.metrics import compute_metrics
-from quantlab.demo import EXECUTION, DonchianBreakout, build_bars, main
+from quantlab.demo import EXECUTION, build_bars, main
+from quantlab.strategies import DonchianBreakout
 
 
 def test_demo_bars_are_identical_across_calls():
