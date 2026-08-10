@@ -11,6 +11,11 @@
       "logo_capgemini": "assets/logo_capgemini.png",
       "logo_buildathon": "assets/logo_buildathon.png",
       "gradient_bar": "assets/gradient_bar.png"
+    },
+    "fonts": {
+      "regular": "assets/fonts/Ubuntu-Regular.ttf",
+      "medium": "assets/fonts/Ubuntu-Medium.ttf",
+      "bold": "assets/fonts/Ubuntu-Bold.ttf"
     }
   },
 
@@ -19,6 +24,19 @@
     "candidate_name": "Candidate Name",
     "team_name": "Team Name",
     "mail_id": "Messaging mailID"
+  },
+
+  "signatories": {
+    "left": {
+      "name": "Padmashree Shagrithaya",
+      "role": "Executive Vice President and Head, Insights & Data Global Business Line - India, Capgemini",
+      "signature_image": "assets/signatures/sig_padmashree.png"
+    },
+    "right": {
+      "name": "Puneet Kumra",
+      "role": "Vice President and Head, Early Careers Program - India, Capgemini",
+      "signature_image": "assets/signatures/sig_puneet.png"
+    }
   },
 
   "messages": {

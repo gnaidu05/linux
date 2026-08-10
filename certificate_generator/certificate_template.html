@@ -3,190 +3,201 @@
 <head>
 <meta charset="UTF-8" />
 <style>
-  /* ----------------------------------------------------------------
-     Fixed canvas = PowerPoint slide size (10.833in x 7.5in).
-     @page + body dimensions are identical so Chromium renders exactly
-     one full-bleed page with no margins.
-  ----------------------------------------------------------------- */
+  /* -----------------------------------------------------------------
+     Fonts (Ubuntu / Ubuntu Medium) embedded as Base64 by the generator
+     so the PDF matches the PowerPoint typography on any machine.
+  ------------------------------------------------------------------ */
+  @font-face {
+    font-family: "Ubuntu"; font-style: normal; font-weight: 400;
+    src: url("{{ font_regular }}") format("truetype");
+  }
+  @font-face {
+    font-family: "Ubuntu"; font-style: normal; font-weight: 500;
+    src: url("{{ font_medium }}") format("truetype");
+  }
+  @font-face {
+    font-family: "Ubuntu"; font-style: normal; font-weight: 700;
+    src: url("{{ font_bold }}") format("truetype");
+  }
+
+  /* Fixed canvas = PowerPoint slide size (10.833in x 7.5in). */
   @page { size: 10.833in 7.5in; margin: 0; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  html, body {
-    width: 10.833in;
-    height: 7.5in;
-  }
+  html, body { width: 10.833in; height: 7.5in; }
 
   body {
-    /* Outer blue frame colour from the template */
-    background: #016DB8;
+    position: relative;                  /* slide coordinate system */
+    background: #016DB8;                  /* outer blue frame (Rectangle 1) */
     font-family: "Ubuntu", "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+    color: #121A38;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* White rounded "card" inset from the blue frame */
+  /* White rounded card (Rounded Rectangle 43) — background layer only.
+     Content is positioned against the slide, not the card, so every element
+     keeps the exact slide coordinates of its PowerPoint shape. */
   .card {
     position: absolute;
-    left: 0.20in;
-    top: 0.18in;
-    width: 10.44in;
-    height: 7.14in;
+    left: 0.198in; top: 0.181in;
+    width: 10.437in; height: 7.138in;
     background: #FFFFFF;
-    border-radius: 0.22in;
-    overflow: hidden;
+    border-radius: 0.167in;
   }
 
-  /* Absolutely-positioned elements use the same in-coordinates as the
-     original PowerPoint shapes so the layout matches pixel-for-pixel. */
+  /* Every element uses the exact inch coordinates of its PowerPoint shape. */
+
+  /* Logos */
   .logo-buildathon {
-    position: absolute; left: 1.02in; top: 0.51in;
-    width: 1.85in; height: 0.96in;
-    object-fit: contain; object-position: left center;
+    position: absolute; left: 1.018in; top: 0.505in;
+    width: 1.855in; height: 0.960in;
+    object-fit: contain; object-position: left top;
   }
   .logo-capgemini {
-    position: absolute; left: 7.52in; top: 0.67in;
-    width: 2.92in; height: 0.92in;
+    position: absolute; left: 7.525in; top: 0.669in;
+    width: 2.920in; height: 0.923in;
     object-fit: contain; object-position: right center;
   }
 
-  /* Position / award tier — the large accent-blue heading */
+  /* Award tier / Position (TextBox 13) — 40pt Ubuntu Medium, accent blue */
   .position {
-    position: absolute; left: 0; top: 1.70in;
-    width: 100%; text-align: center;
+    position: absolute; left: 0; top: 1.774in;
+    width: 100%; height: 0.774in;
+    display: flex; align-items: center; justify-content: center;
     color: #0058AB;
     font-weight: 500;
     font-size: 40pt;
-    line-height: 1.05;
+    line-height: 1.0;
   }
-  .position sup { font-size: 0.55em; vertical-align: super; }
+  .position sup { font-size: 0.55em; vertical-align: super; margin-right: 0.12em; }
 
+  /* "of Capgemini Exceller AgentifAI Buildathon 2026 is certified to" (TextBox 14) */
   .subtitle {
-    position: absolute; left: 1.65in; top: 2.54in;
-    width: 7.53in; text-align: center;
+    position: absolute; left: 2.647in; top: 2.544in;
+    width: 5.550in; height: 0.640in;
+    display: flex; align-items: flex-start; justify-content: center;
+    text-align: center;
     color: #121A38;
     font-size: 16pt;
     line-height: 1.2;
   }
   .subtitle b { font-weight: 700; }
 
-  /* Candidate name (accent) + team name */
+  /* Candidate name + team name (TextBox 20) */
   .recipient {
-    position: absolute; left: 0.95in; top: 3.18in;
-    width: 8.93in; text-align: center;
+    position: absolute; left: 0.954in; top: 3.225in;
+    width: 8.926in; height: 1.142in;
+    text-align: center;
     color: #0058AB;
   }
-  .recipient .name {
-    font-weight: 500;
-    font-size: 24pt;
-    line-height: 1.15;
-  }
-  .recipient .team {
-    font-weight: 400;
-    font-size: 18pt;
-    line-height: 1.25;
-  }
+  .recipient .name { font-weight: 500; font-size: 24pt; line-height: 1.2; }
+  .recipient .team { font-weight: 400; font-size: 18pt; line-height: 1.3; }
 
+  /* Divider under the recipient (Straight Connector 21) — long-dash, black */
   .divider {
-    position: absolute; left: 1.03in; top: 4.33in;
-    width: 8.85in; height: 0;
-    border-top: 1px solid #0058AB;
-    opacity: 0.9;
+    position: absolute; left: 1.027in; top: 4.332in;
+    width: 8.851in; height: 1px;
+    background-image: repeating-linear-gradient(
+      to right, #000 0, #000 9px, transparent 9px, transparent 15px);
   }
 
+  /* Recognition message (TextBox 22) */
   .message {
-    position: absolute; left: 1.03in; top: 4.44in;
-    width: 8.75in; text-align: center;
+    position: absolute; left: 1.027in; top: 4.413in;
+    width: 8.754in; height: 0.572in;
+    display: flex; align-items: flex-start; justify-content: center;
+    text-align: center;
     color: #121A38;
     font-size: 14pt;
     line-height: 1.3;
   }
 
-  /* Signature block (two signatories) */
-  .signatures {
-    position: absolute; left: 0.90in; top: 5.35in;
-    width: 9.00in; height: 1.35in;
-  }
+  /* -------- Signature blocks (Group 24) -------- */
   .sig {
-    position: absolute; top: 0;
-    width: 4.20in;
-  }
-  .sig .line {
-    width: 2.10in; height: 0;
-    border-top: 1px solid #121A38;
-    margin-bottom: 0.10in;
-  }
-  .sig.left  { left: 0.00in; text-align: left; }
-  .sig.left .line { margin-left: 0.10in; }
-  .sig.right { right: 0.00in; text-align: right; }
-  .sig.right .line { margin-left: auto; margin-right: 0.10in; }
-  .sig .who {
+    position: absolute;
+    height: 1.354in;
     color: #121A38;
-    font-weight: 700;
-    font-size: 12pt;
-    line-height: 1.2;
+    font-size: 11.5pt;
+    line-height: 1.22;
   }
-  .sig .role {
-    color: #121A38;
-    font-size: 9.5pt;
-    line-height: 1.2;
-    margin-top: 0.02in;
-  }
+  .sig-left  { left: 0.822in; top: 5.267in; width: 3.567in; }
+  .sig-right { left: 7.058in; top: 5.267in; width: 3.567in; }
 
-  /* Bottom gradient accent bar */
+  /* Handwritten signature image sits in the space above the dashed line */
+  .sig .ink {
+    position: absolute; top: 0.02in; left: 0.15in;
+    height: 0.42in; max-width: 1.85in;
+    object-fit: contain; object-position: left bottom;
+  }
+  /* Dashed signature line (Straight Connector 26 / 6) — long-dash, black */
+  .sig .sig-line {
+    position: absolute; top: 0.461in; height: 1px;
+    background-image: repeating-linear-gradient(
+      to right, #000 0, #000 9px, transparent 9px, transparent 15px);
+  }
+  .sig-left  .sig-line { left: 0.154in; width: 1.898in; }
+  .sig-right .sig-line { left: 0.134in; width: 1.217in; }
+
+  .sig .who  { position: absolute; top: 0.52in; left: 0.02in; right: 0;
+               font-weight: 700; }
+  .sig .role { position: absolute; top: 0.75in; left: 0.02in; right: 0; }
+
+  /* Bottom gradient accent bar (Picture 15) — straight, not rounded */
   .gradient-bar {
-    position: absolute; left: 2.92in; top: 6.62in;
-    width: 7.72in; height: 0.14in;
-    border-radius: 0.07in;
+    position: absolute; left: 2.920in; top: 6.622in;
+    width: 7.716in; height: 0.278in;
     object-fit: fill;
   }
 
+  /* Date (TextBox 4) */
   .date {
-    position: absolute; right: 0.40in; top: 6.96in;
+    position: absolute; left: 8.690in; top: 6.960in;
+    width: 2.760in;
     color: #121A38;
     font-size: 12pt;
-    text-align: right;
   }
 </style>
 </head>
 <body>
-  <div class="card">
-    <img class="logo-buildathon" src="{{ logo_buildathon }}" alt="AgentifAI Buildathon" />
-    <img class="logo-capgemini"  src="{{ logo_capgemini }}"  alt="Capgemini" />
+  <div class="card"></div>
 
-    <div class="position">{{ position_html | safe }}</div>
+  <img class="logo-buildathon" src="{{ logo_buildathon }}" alt="AgentifAI Buildathon" />
+  <img class="logo-capgemini"  src="{{ logo_capgemini }}"  alt="Capgemini" />
 
-    <div class="subtitle">
-      of <b>Capgemini Exceller AgentifAI Buildathon 2026</b> is certified to
-    </div>
+  <div class="position">{{ position_html | safe }}</div>
 
-    <div class="recipient">
-      <div class="name">{{ candidate_name }}</div>
-      {% if team_name %}<div class="team">{{ team_name }}</div>{% endif %}
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="message">{{ message }}</div>
-
-    <div class="signatures">
-      <div class="sig left">
-        <div class="line"></div>
-        <div class="who">Padmashree Shagrithaya</div>
-        <div class="role">Executive Vice President and Head, Insights &amp; Data
-          Global Business Line - India, Capgemini</div>
-      </div>
-      <div class="sig right">
-        <div class="line"></div>
-        <div class="who">Puneet Kumra</div>
-        <div class="role">Vice President and Head, Early Careers Program
-          - India, Capgemini</div>
-      </div>
-    </div>
-
-    <img class="gradient-bar" src="{{ gradient_bar }}" alt="" />
-
-    <div class="date">Date: {{ date }}</div>
+  <div class="subtitle">
+    <span><b>of Capgemini Exceller AgentifAI Buildathon 2026</b> is certified to</span>
   </div>
+
+  <div class="recipient">
+    <div class="name">{{ candidate_name }}</div>
+    {% if team_name %}<div class="team">{{ team_name }}</div>{% endif %}
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="message"><span>{{ message }}</span></div>
+
+  <!-- Left signatory -->
+  <div class="sig sig-left">
+    {% if sig_left_img %}<img class="ink" src="{{ sig_left_img }}" alt="" />{% endif %}
+    <div class="sig-line"></div>
+    <div class="who">{{ sig_left_name }}</div>
+    <div class="role">{{ sig_left_role }}</div>
+  </div>
+
+  <!-- Right signatory -->
+  <div class="sig sig-right">
+    {% if sig_right_img %}<img class="ink" src="{{ sig_right_img }}" alt="" />{% endif %}
+    <div class="sig-line"></div>
+    <div class="who">{{ sig_right_name }}</div>
+    <div class="role">{{ sig_right_role }}</div>
+  </div>
+
+  <img class="gradient-bar" src="{{ gradient_bar }}" alt="" />
+
+  <div class="date">Date: {{ date }}</div>
 </body>
 </html>

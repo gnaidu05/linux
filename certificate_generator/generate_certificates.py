@@ -72,6 +72,22 @@ def data_uri(path: Path) -> str:
     return f"data:{mime};base64,{encoded}"
 
 
+def font_uri(path: Path) -> str:
+    """Embed a local TrueType font as a Base64 data URI for @font-face."""
+    if not path.is_file():
+        raise FileNotFoundError(f"Font not found: {path}")
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:font/ttf;base64,{encoded}"
+
+
+def optional_uri(path: Path):
+    """Data URI for an optional asset; None (with a warning) if it is missing."""
+    if not path.is_file():
+        log.warning("Optional asset missing, skipping: %s", path)
+        return None
+    return data_uri(path)
+
+
 def safe_filename(name: str) -> str:
     """Turn an arbitrary string (mail id) into a safe file stem."""
     name = str(name).strip()
@@ -131,12 +147,30 @@ def generate(config: dict, base_dir: Path,
     template_file = base_dir / paths["template_file"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Embed brand assets once (shared by every certificate).
+    # Embed brand assets, fonts and signatories once (shared by every cert).
     assets = paths["assets"]
+    fonts = paths["fonts"]
+    sig = config.get("signatories", {})
+    sig_left = sig.get("left", {})
+    sig_right = sig.get("right", {})
+
+    def sig_uri(entry):
+        img = entry.get("signature_image")
+        return optional_uri(base_dir / img) if img else None
+
     shared = {
         "logo_capgemini": data_uri(base_dir / assets["logo_capgemini"]),
         "logo_buildathon": data_uri(base_dir / assets["logo_buildathon"]),
         "gradient_bar": data_uri(base_dir / assets["gradient_bar"]),
+        "font_regular": font_uri(base_dir / fonts["regular"]),
+        "font_medium": font_uri(base_dir / fonts["medium"]),
+        "font_bold": font_uri(base_dir / fonts["bold"]),
+        "sig_left_name": sig_left.get("name", ""),
+        "sig_left_role": sig_left.get("role", ""),
+        "sig_left_img": sig_uri(sig_left),
+        "sig_right_name": sig_right.get("name", ""),
+        "sig_right_role": sig_right.get("role", ""),
+        "sig_right_img": sig_uri(sig_right),
         "date": config.get("certificate_date", ""),
     }
 
