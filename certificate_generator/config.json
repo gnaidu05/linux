@@ -1,0 +1,35 @@
+{
+  "event_name": "Capgemini Exceller AgentifAI Buildathon 2026",
+  "certificate_date": "12.08.2026",
+
+  "paths": {
+    "excel_file": "data/certificates.xlsx",
+    "sheet_name": 0,
+    "template_file": "certificate_template.html",
+    "output_dir": "output",
+    "assets": {
+      "logo_capgemini": "assets/logo_capgemini.png",
+      "logo_buildathon": "assets/logo_buildathon.png",
+      "gradient_bar": "assets/gradient_bar.png"
+    }
+  },
+
+  "columns": {
+    "position": "Position",
+    "candidate_name": "Candidate Name",
+    "team_name": "Team Name",
+    "mail_id": "Messaging mailID"
+  },
+
+  "messages": {
+    "default": "This recognition celebrates your enthusiasm, curiosity, and commitment to exploring the possibilities of AI.",
+    "by_position": {
+      "Top 100 Finalist": "Your participation reflects the creativity, collaboration, and forward-thinking spirit that drive AI-powered innovation."
+    }
+  },
+
+  "pdf": {
+    "width_inches": 10.833,
+    "height_inches": 7.5
+  }
+}

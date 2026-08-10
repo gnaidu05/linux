@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<style>
+  /* ----------------------------------------------------------------
+     Fixed canvas = PowerPoint slide size (10.833in x 7.5in).
+     @page + body dimensions are identical so Chromium renders exactly
+     one full-bleed page with no margins.
+  ----------------------------------------------------------------- */
+  @page { size: 10.833in 7.5in; margin: 0; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 10.833in;
+    height: 7.5in;
+  }
+
+  body {
+    /* Outer blue frame colour from the template */
+    background: #016DB8;
+    font-family: "Ubuntu", "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* White rounded "card" inset from the blue frame */
+  .card {
+    position: absolute;
+    left: 0.20in;
+    top: 0.18in;
+    width: 10.44in;
+    height: 7.14in;
+    background: #FFFFFF;
+    border-radius: 0.22in;
+    overflow: hidden;
+  }
+
+  /* Absolutely-positioned elements use the same in-coordinates as the
+     original PowerPoint shapes so the layout matches pixel-for-pixel. */
+  .logo-buildathon {
+    position: absolute; left: 1.02in; top: 0.51in;
+    width: 1.85in; height: 0.96in;
+    object-fit: contain; object-position: left center;
+  }
+  .logo-capgemini {
+    position: absolute; left: 7.52in; top: 0.67in;
+    width: 2.92in; height: 0.92in;
+    object-fit: contain; object-position: right center;
+  }
+
+  /* Position / award tier — the large accent-blue heading */
+  .position {
+    position: absolute; left: 0; top: 1.70in;
+    width: 100%; text-align: center;
+    color: #0058AB;
+    font-weight: 500;
+    font-size: 40pt;
+    line-height: 1.05;
+  }
+  .position sup { font-size: 0.55em; vertical-align: super; }
+
+  .subtitle {
+    position: absolute; left: 1.65in; top: 2.54in;
+    width: 7.53in; text-align: center;
+    color: #121A38;
+    font-size: 16pt;
+    line-height: 1.2;
+  }
+  .subtitle b { font-weight: 700; }
+
+  /* Candidate name (accent) + team name */
+  .recipient {
+    position: absolute; left: 0.95in; top: 3.18in;
+    width: 8.93in; text-align: center;
+    color: #0058AB;
+  }
+  .recipient .name {
+    font-weight: 500;
+    font-size: 24pt;
+    line-height: 1.15;
+  }
+  .recipient .team {
+    font-weight: 400;
+    font-size: 18pt;
+    line-height: 1.25;
+  }
+
+  .divider {
+    position: absolute; left: 1.03in; top: 4.33in;
+    width: 8.85in; height: 0;
+    border-top: 1px solid #0058AB;
+    opacity: 0.9;
+  }
+
+  .message {
+    position: absolute; left: 1.03in; top: 4.44in;
+    width: 8.75in; text-align: center;
+    color: #121A38;
+    font-size: 14pt;
+    line-height: 1.3;
+  }
+
+  /* Signature block (two signatories) */
+  .signatures {
+    position: absolute; left: 0.90in; top: 5.35in;
+    width: 9.00in; height: 1.35in;
+  }
+  .sig {
+    position: absolute; top: 0;
+    width: 4.20in;
+  }
+  .sig .line {
+    width: 2.10in; height: 0;
+    border-top: 1px solid #121A38;
+    margin-bottom: 0.10in;
+  }
+  .sig.left  { left: 0.00in; text-align: left; }
+  .sig.left .line { margin-left: 0.10in; }
+  .sig.right { right: 0.00in; text-align: right; }
+  .sig.right .line { margin-left: auto; margin-right: 0.10in; }
+  .sig .who {
+    color: #121A38;
+    font-weight: 700;
+    font-size: 12pt;
+    line-height: 1.2;
+  }
+  .sig .role {
+    color: #121A38;
+    font-size: 9.5pt;
+    line-height: 1.2;
+    margin-top: 0.02in;
+  }
+
+  /* Bottom gradient accent bar */
+  .gradient-bar {
+    position: absolute; left: 2.92in; top: 6.62in;
+    width: 7.72in; height: 0.14in;
+    border-radius: 0.07in;
+    object-fit: fill;
+  }
+
+  .date {
+    position: absolute; right: 0.40in; top: 6.96in;
+    color: #121A38;
+    font-size: 12pt;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo-buildathon" src="{{ logo_buildathon }}" alt="AgentifAI Buildathon" />
+    <img class="logo-capgemini"  src="{{ logo_capgemini }}"  alt="Capgemini" />
+
+    <div class="position">{{ position_html | safe }}</div>
+
+    <div class="subtitle">
+      of <b>Capgemini Exceller AgentifAI Buildathon 2026</b> is certified to
+    </div>
+
+    <div class="recipient">
+      <div class="name">{{ candidate_name }}</div>
+      {% if team_name %}<div class="team">{{ team_name }}</div>{% endif %}
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="message">{{ message }}</div>
+
+    <div class="signatures">
+      <div class="sig left">
+        <div class="line"></div>
+        <div class="who">Padmashree Shagrithaya</div>
+        <div class="role">Executive Vice President and Head, Insights &amp; Data
+          Global Business Line - India, Capgemini</div>
+      </div>
+      <div class="sig right">
+        <div class="line"></div>
+        <div class="who">Puneet Kumra</div>
+        <div class="role">Vice President and Head, Early Careers Program
+          - India, Capgemini</div>
+      </div>
+    </div>
+
+    <img class="gradient-bar" src="{{ gradient_bar }}" alt="" />
+
+    <div class="date">Date: {{ date }}</div>
+  </div>
+</body>
+</html>

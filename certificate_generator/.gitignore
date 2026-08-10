@@ -1,0 +1,8 @@
+# Generated certificate PDFs
+output/*.pdf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
