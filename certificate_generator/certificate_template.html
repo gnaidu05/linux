@@ -24,10 +24,19 @@
   @page { size: 10.833in 7.5in; margin: 0; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 10.833in; height: 7.5in; }
 
-  body {
-    position: relative;                  /* slide coordinate system */
+  /* Lock the page to the slide size and clip anything that would spill over,
+     so a stray element can never widen the page (and the blue frame). */
+  html, body {
+    width: 10.833in; height: 7.5in;
+    overflow: hidden;
+  }
+
+  /* The slide is the coordinate system + the outer blue frame. */
+  .slide {
+    position: relative;
+    width: 10.833in; height: 7.5in;
+    overflow: hidden;
     background: #016DB8;                  /* outer blue frame (Rectangle 1) */
     font-family: "Ubuntu", "Trebuchet MS", "Segoe UI", Arial, sans-serif;
     color: #121A38;
@@ -36,12 +45,12 @@
   }
 
   /* White rounded card (Rounded Rectangle 43) — background layer only.
-     Content is positioned against the slide, not the card, so every element
-     keeps the exact slide coordinates of its PowerPoint shape. */
+     Using left/top/right/bottom guarantees a mathematically equal frame on
+     all four sides regardless of rounding. */
   .card {
     position: absolute;
-    left: 0.198in; top: 0.198in;                /* uniform frame on all sides */
-    width: 10.437in; height: 7.104in;           /* 7.5 - 2*0.198 */
+    left: 0.198in; top: 0.198in;
+    right: 0.198in; bottom: 0.198in;
     background: #FFFFFF;
     border-radius: 0.167in;
   }
@@ -150,16 +159,18 @@
     object-fit: fill;
   }
 
-  /* Date (TextBox 4) */
+  /* Date (TextBox 4) — right-aligned so it can never overflow the slide. */
   .date {
-    position: absolute; left: 8.690in; top: 6.960in;
-    width: 2.760in;
+    position: absolute; right: 0.350in; top: 6.960in;
+    text-align: right;
+    white-space: nowrap;
     color: #121A38;
     font-size: 12pt;
   }
 </style>
 </head>
 <body>
+ <div class="slide">
   <div class="card"></div>
 
   <img class="logo-buildathon" src="{{ logo_buildathon }}" alt="AgentifAI Buildathon" />
@@ -199,5 +210,6 @@
   <img class="gradient-bar" src="{{ gradient_bar }}" alt="" />
 
   <div class="date">Date: {{ date }}</div>
+ </div>
 </body>
 </html>
