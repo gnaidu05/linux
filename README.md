@@ -1,5 +1,10 @@
 # SecureOS — a hardened, fully functional Linux desktop OS
 
+> **Also in this repo:** [`cloudpc/`](cloudpc/) — a Docker-based,
+> browser-accessible cloud desktop service (web login, per-user isolated
+> XFCE sessions over noVNC/HTTPS, hardened containers). See
+> [cloudpc/README.md](cloudpc/README.md).
+
 SecureOS is a complete, reproducible build system that produces a **bootable
 hybrid BIOS/UEFI Linux ISO** based on Debian 12 (bookworm), with:
 
@@ -14,6 +19,8 @@ hybrid BIOS/UEFI Linux ISO** based on Debian 12 (bookworm), with:
   password change on first login, hardened sudo with I/O logging
 - **Installer** — `secureos-install` installs to disk with LUKS2 full-disk
   encryption (argon2id) and a hardened kernel command line
+- **Cloud / browser access** — run the OS on any server and use the full
+  desktop from a web browser via noVNC over HTTPS (see below)
 
 ## Quick start
 
@@ -60,6 +67,22 @@ sudo secureos-install /dev/sdX    # ERASES the disk; prompts for confirmation
 The installer sets up GPT partitioning, a LUKS2-encrypted root (you choose the
 passphrase), installs GRUB for both BIOS and UEFI, and enables the hardened
 kernel command line (AppArmor, lockdown, init_on_alloc/free, etc.).
+
+## Running in the browser (cloud desktop)
+
+Host SecureOS on a cloud server and use it from any browser — no client
+software needed:
+
+```bash
+sudo ./cloud/provision-server.sh                                          # once
+sudo ./cloud/run-cloud.sh --iso out/secureos-1.0-amd64.iso --disk secureos.qcow2
+# open https://<server-ip>:6080/vnc.html
+```
+
+The desktop streams over noVNC behind TLS + a VNC password; QEMU's VNC is
+bound to localhost only. Install to the encrypted virtual disk from inside
+the browser session (`sudo secureos-install /dev/vda`), then boot with just
+`--disk secureos.qcow2`. Full guide: [docs/CLOUD.md](docs/CLOUD.md).
 
 ## Customizing
 

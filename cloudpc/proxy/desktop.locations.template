@@ -1,0 +1,29 @@
+# Desktop route template — instantiated per user by scripts/add-user.sh
+# Placeholders: __USER__ (username), __UPSTREAM__ (container hostname)
+location /desktop/__USER__/ {
+    auth_request /_verify;
+
+    # Re-resolve the upstream at request time via Docker's embedded DNS so a
+    # restarted desktop container (new IP) does not leave this route pinned
+    # to a stale address (502). Using a variable forces runtime resolution;
+    # the rewrite reproduces the trailing-slash prefix strip that a literal
+    # proxy_pass with a path would do.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $up___USER__ __UPSTREAM__;
+    rewrite ^/desktop/__USER__/(.*)$ /$1 break;
+    proxy_pass http://$up___USER__:6901;
+
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_read_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_buffering off;
+}
+# Convenience: land on the noVNC client with autoconnect
+location = /desktop/__USER__ {
+    auth_request /_verify;
+    return 302 /desktop/__USER__/vnc.html?autoconnect=true&resize=scale&path=desktop/__USER__/websockify;
+}
