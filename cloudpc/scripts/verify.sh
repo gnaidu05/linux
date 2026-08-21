@@ -103,11 +103,24 @@ echo "$codes" | grep -q 429 && ok "rate limit triggers 429 on login flood" \
 
 # 9. Session apps present and launchable
 for c in cloudpc-desktop-admin-1 cloudpc-desktop-user-1; do
-    docker exec "$c" bash -c 'command -v chromium && command -v libreoffice \
+    # Non-browser required apps
+    docker exec "$c" bash -c 'command -v libreoffice \
         && command -v vlc && command -v gimp && command -v thunar \
         && command -v mousepad && command -v xarchiver && command -v ristretto \
         && command -v xfce4-terminal' >/dev/null 2>&1 \
-        && ok "$c: all applications installed" || bad "$c: all applications installed"
+        && ok "$c: office/media/file/editor/terminal apps installed" \
+        || bad "$c: office/media/file/editor/terminal apps installed"
+    # Chromium (via the wrapper: apt build or vendored fallback)
+    docker exec "$c" /usr/local/bin/chromium --version >/dev/null 2>&1 \
+        && ok "$c: Chromium launches ($(docker exec "$c" /usr/local/bin/chromium --version 2>/dev/null | tr -d '\r'))" \
+        || bad "$c: Chromium launches"
+    # Firefox (required by spec; installed from the Mozilla PPA on a
+    # networked host). Report its true state — do not mask absence.
+    if docker exec "$c" command -v firefox >/dev/null 2>&1; then
+        ok "$c: Firefox installed"
+    else
+        bad "$c: Firefox installed (PPA unreachable in this build env; installs on a networked VPS — see build-warnings)"
+    fi
     docker exec "$c" pgrep -x Xvnc >/dev/null && ok "$c: Xvnc running" || bad "$c: Xvnc running"
     docker exec "$c" pgrep -f xfce4-session >/dev/null && ok "$c: XFCE session running" \
                                                        || bad "$c: XFCE session running"

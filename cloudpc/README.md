@@ -14,10 +14,11 @@ by noVNC. No client software.
                                  isolated networks, persistent home volumes)
 ```
 
-Everything is built **from the Ubuntu 24.04 archives with no container
-registry access required**: the base image is produced locally by
-debootstrap and `docker import`, so the stack deploys even on networks where
-Docker Hub is blocked.
+The base image is built **with no container registry access required**:
+produced locally by debootstrap and `docker import`, so the stack deploys
+even on networks where Docker Hub is blocked. Packages (including both
+browsers) come from the normal Ubuntu archives and two `.deb` PPAs over
+plain apt — no Docker registry and no Node.js toolchain are needed.
 
 ## Why XFCE
 
@@ -30,7 +31,7 @@ concurrent session counts.
 
 | Category | Application |
 |----------|-------------|
-| Browsers | Chromium (full upstream build, bundled); Firefox (Mozilla Team PPA deb — see note) |
+| Browsers | Firefox (`ppa:mozillateam` deb); Chromium (`ppa:xtradeb` deb, with an optional vendored fallback — see note) |
 | Office | LibreOffice Writer, Calc, Impress |
 | Media | VLC |
 | Images | Ristretto (viewer), GIMP (editor) |
@@ -39,24 +40,28 @@ concurrent session counts.
 | Terminal | xfce4-terminal |
 | Misc | Galculator, XFCE task manager |
 
-> **Firefox note:** Ubuntu 24.04 only ships Firefox as a snap, which cannot
-> run in containers, so the Dockerfile installs the real deb from the
-> Mozilla Team PPA. If the PPA is unreachable at build time (offline /
-> restricted networks) the build continues without Firefox and records it
-> in `/etc/cloudpc/build-warnings`; rebuild with network access to include it.
+> **Browser note:** Ubuntu ships both Firefox and Chromium only as snaps,
+> which cannot run in a container, so both are installed as real `.deb`s:
+> Firefox from `ppa:mozillateam/ppa` and Chromium from `ppa:xtradeb/apps`.
+> Each install is best-effort — if a PPA is unreachable the build continues
+> and records the skip in `/etc/cloudpc/build-warnings`. For air-gapped or
+> PPA-restricted builds, set `OFFLINE_CHROMIUM=1` on `setup.sh` to vendor a
+> Chromium build into the image (`scripts/fetch-chromium.sh`); the launcher
+> prefers that vendored build when present.
 
 ## Quick start (fresh Ubuntu 22.04/24.04 VPS)
 
 ```bash
 apt-get update && apt-get install -y docker.io docker-compose-v2 git
 git clone <this-repo> && cd <repo>/cloudpc
-sudo SETUP_HOST=1 ./setup.sh
+sudo ./setup.sh
 ```
 
-One command builds the base image, the desktop/auth/proxy images, generates
-a self-signed TLS certificate and secrets, starts the stack, creates the two
-initial accounts, and (with `SETUP_HOST=1`) applies the host firewall and
-fail2ban. At the end it prints:
+That single command builds the base image, the desktop/auth/proxy images
+(browsers via apt — no Node.js needed), generates a self-signed TLS
+certificate and secrets, starts the stack, creates the two initial accounts,
+and — because it runs as root — applies the host firewall and fail2ban by
+default (opt out with `SKIP_HOST=1 sudo ./setup.sh`). At the end it prints:
 
 - the URL: `https://<server-ip>/`
 - the **initial passwords** for `admin` and `user` (randomly generated,
@@ -79,10 +84,14 @@ desktop container is locked.
 ./scripts/add-user.sh alice user      # or: alice admin
 ```
 
-This creates the portal account (printing a one-time initial password),
-writes the nginx route, and prints a compose override snippet for the new
-desktop container (each user gets their own container, network, and home
-volume). After adding the snippet:
+The two built-in accounts (`admin`, `user`) work out of the box with no
+extra steps. `add-user.sh` covers a **third or later** user: it creates the
+portal account (printing a one-time initial password) and writes the nginx
+route immediately, then — because each user gets their own isolated
+container, network, and home volume — prints a ready-to-paste
+`docker-compose.override.yml` snippet for the new desktop service. That last
+step is a deliberate manual edit (adding a container is not something to do
+silently). After pasting the snippet:
 
 ```bash
 docker compose up -d && docker compose exec proxy nginx -s reload
@@ -148,11 +157,18 @@ automatic certificates; the nginx container then listens only on localhost.)
   with the proxy; the auth portal's network is `internal` (no egress);
   desktops cannot reach each other
 
-**Host (scripts/host-security.sh)**
-- UFW default-deny incoming; only SSH and 443 open
+**Host (scripts/host-security.sh — run by default from `setup.sh` as root)**
+- UFW default-deny incoming; only SSH and 443 open (OpenSSH is allowed
+  before UFW is enabled, so remote access is never cut off)
 - fail2ban jail on the auth log: 10 failures / 10 min → 1 h ban, applied in
   the `DOCKER-USER` chain so bans work for Docker-published ports (Docker
   bypasses the normal INPUT chain — the script handles this correctly)
+- fail2ban is the durable brute-force layer: the portal's own lockout
+  counters are in-memory and reset if the auth container restarts, so the
+  host jail is what persists bans across restarts
+
+**Adding-user note:** the two built-in accounts need no extra steps; a third
+user requires pasting one generated compose snippet (see "Adding users").
 
 **Known trade-offs (documented, deliberate)**
 - Chromium runs with `--no-sandbox` inside the session container: its

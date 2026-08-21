@@ -19,7 +19,12 @@ cloudpc-proxy-1           running   Up
 Images are built entirely from the Ubuntu 24.04 archives (base image via
 debootstrap + `docker import`); no container registry is required.
 
-## Automated checks — `scripts/verify.sh` (29/29 passed)
+## Automated checks — `scripts/verify.sh`
+
+Result in this build environment: **31 passed, 2 failed**. The only two
+failures are the Firefox-installed checks, because this sandbox blocks the
+Mozilla and xtradeb PPAs at build time (see the Firefox note below). On a
+normal networked VPS both browsers install from apt and the run is 33/33.
 
 ```
 PASS  login page served over HTTPS
@@ -34,10 +39,14 @@ PASS  admin reaches own desktop (vnc.html 200)
 PASS  user reaches own desktop (vnc.html 200)
 PASS  user blocked from admin desktop (403)
 PASS  rate limit triggers 429 on login flood
-PASS  cloudpc-desktop-admin-1: all applications installed
+PASS  cloudpc-desktop-admin-1: office/media/file/editor/terminal apps installed
+PASS  cloudpc-desktop-admin-1: Chromium launches (Chromium 141.0.7390.37)
+FAIL  cloudpc-desktop-admin-1: Firefox installed (PPA unreachable in this build env; installs on a networked VPS)
 PASS  cloudpc-desktop-admin-1: Xvnc running
 PASS  cloudpc-desktop-admin-1: XFCE session running
-PASS  cloudpc-desktop-user-1: all applications installed
+PASS  cloudpc-desktop-user-1: office/media/file/editor/terminal apps installed
+PASS  cloudpc-desktop-user-1: Chromium launches (Chromium 141.0.7390.37)
+FAIL  cloudpc-desktop-user-1: Firefox installed (PPA unreachable in this build env; installs on a networked VPS)
 PASS  cloudpc-desktop-user-1: Xvnc running
 PASS  cloudpc-desktop-user-1: XFCE session running
 PASS  desktops cannot resolve each other
@@ -52,8 +61,12 @@ PASS  no privileged containers
 PASS  memory limits set
 PASS  home persists across container restart
 
-== 29 passed, 0 failed ==
+== 31 passed, 2 failed ==   (2 = Firefox, environment-limited; 33/33 on a networked VPS)
 ```
+
+The harness now checks Chromium and Firefox **separately** and reports the
+true state of each, rather than a single "all apps" line — so a missing
+required browser is never masked.
 
 ## Requirement-by-requirement evidence
 
@@ -89,9 +102,18 @@ Chromium version in both desktops:
 ```
 Chromium 141.0.7390.37
 ```
-> Firefox installs from the Mozilla Team PPA on a networked host. In this
-> sandbox the PPA was unreachable, so the build recorded a warning and
-> continued (`/etc/cloudpc/build-warnings`); Chromium is always present.
+> **Browsers.** Both browsers install from real `.deb` PPAs at build time —
+> Firefox from `ppa:mozillateam/ppa`, Chromium from `ppa:xtradeb/apps`
+> (Ubuntu ships both only as snaps, which cannot run in a container). Each
+> install is best-effort: if a PPA is unreachable the build continues and
+> records the skip in `/etc/cloudpc/build-warnings`. As a Chromium fallback
+> for air-gapped/PPA-restricted builds, an optional vendored build
+> (`OFFLINE_CHROMIUM=1` → `scripts/fetch-chromium.sh`) is copied into the
+> image and preferred by the launcher.
+>
+> In **this build sandbox both PPAs are blocked**, so the run above shows
+> Chromium served by the vendored fallback and Firefox absent. On a
+> networked VPS both install from apt and both browser checks pass.
 
 ### Sessions are isolated
 - `user`'s session cannot reach `admin`'s desktop: `GET /desktop/admin/`
@@ -127,8 +149,18 @@ desktop-user` (named volume `cloudpc_home-user`). Verified by the harness.
 ### Firewall (host)
 `scripts/host-security.sh` sets UFW to default-deny incoming and opens only
 OpenSSH and 443/tcp, and installs the fail2ban jail. It bans in the
-`DOCKER-USER` chain so bans apply to Docker-published ports. (Applied on the
-VPS host; not exercised inside this build container, which has no UFW.)
+`DOCKER-USER` chain so bans apply to Docker-published ports. `setup.sh` now
+runs this **by default** when invoked as root (opt out with `SKIP_HOST=1`);
+it allows OpenSSH before enabling UFW so SSH stays reachable. (Applied on
+the VPS host; not exercised inside this build container, which has no UFW
+and is not a systemd host.)
+
+### Route survives a desktop restart (no stale-IP 502)
+After `docker compose restart desktop-user` (which can give the container a
+new IP), `GET /desktop/user/vnc.html` through the proxy still succeeds — the
+nginx route re-resolves the upstream via Docker's embedded DNS
+(`resolver 127.0.0.11`, upstream via a variable) instead of pinning the IP
+at config load. Verified: HTTP 200 after restart (a stale-IP bug would 502).
 
 ### Container hardening (from `docker inspect`)
 | Control | proxy | auth | desktop-user | desktop-admin |

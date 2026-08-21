@@ -4,12 +4,16 @@
 # Runs entirely as an unprivileged user; the web auth layer (nginx + auth
 # portal) sits in front — this container is never directly exposed.
 #
-# Browsers:
-#   - Chromium: copied from the build context (vendor/chromium), a full
-#     upstream Chromium build (Playwright distribution).
-#   - Firefox: installed from the Mozilla Team PPA (real deb, not snap).
-#     If the PPA is unreachable at build time (restricted networks), the
-#     build continues and records the skip in /etc/cloudpc/build-warnings.
+# Browsers (Ubuntu ships both only as snaps, which cannot run in a
+# container, so both come from real .deb sources):
+#   - Chromium: from the xtradeb PPA (real .deb). If that PPA is
+#     unreachable at build time, an optional vendored build copied into
+#     the image (desktop/vendor/chromium, populated by
+#     scripts/fetch-chromium.sh) is used as a fallback.
+#   - Firefox:  from the Mozilla Team PPA (real .deb).
+# Each browser install is best-effort: if its repo is unreachable the build
+# continues and records the skip in /etc/cloudpc/build-warnings. The wrapper
+# /usr/local/bin/chromium prefers the vendored build, else the apt one.
 FROM cloudpc/base:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -25,18 +29,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         fonts-dejavu fonts-liberation fonts-noto-core \
         libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-gtk3 \
         vlc gimp \
-        sudo ca-certificates curl less vim-tiny bash-completion \
-        # Chromium runtime dependencies (it is copied in, not apt-installed)
-        libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
-        libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
-        libgbm1 libasound2t64 libpango-1.0-0 libcairo2 libgtk-3-0t64 && \
+        sudo ca-certificates curl less vim-tiny bash-completion && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# --- Firefox from Mozilla Team PPA (best effort; see header) ---------------
+# --- Browsers from real .deb PPAs (best effort; see header) ----------------
 RUN set -e; mkdir -p /etc/cloudpc; \
-    if apt-get update 2>/dev/null && \
-       apt-get install -y --no-install-recommends software-properties-common 2>/dev/null && \
-       add-apt-repository -y ppa:mozillateam/ppa 2>/dev/null && \
+    apt-get update 2>/dev/null && \
+    apt-get install -y --no-install-recommends software-properties-common 2>/dev/null || true; \
+    # Firefox (Mozilla Team PPA)
+    if add-apt-repository -y ppa:mozillateam/ppa 2>/dev/null && \
        printf 'Package: firefox*\nPin: release o=LP-PPA-mozillateam\nPin-Priority: 1001\n' \
             > /etc/apt/preferences.d/mozilla-ppa && \
        apt-get update 2>/dev/null && \
@@ -46,13 +47,30 @@ RUN set -e; mkdir -p /etc/cloudpc; \
         echo "WARNING firefox skipped: mozillateam PPA unreachable at build time" \
             >> /etc/cloudpc/build-warnings; \
     fi; \
+    # Chromium (xtradeb PPA — real .deb, not the Ubuntu snap shim)
+    if add-apt-repository -y ppa:xtradeb/apps 2>/dev/null && \
+       apt-get update 2>/dev/null && \
+       apt-get install -y --no-install-recommends chromium 2>/dev/null; then \
+        echo "chromium: installed from xtradeb PPA" >> /etc/cloudpc/build-info; \
+    else \
+        echo "WARNING chromium apt install skipped: xtradeb PPA unreachable; \
+using vendored build if present" >> /etc/cloudpc/build-warnings; \
+    fi; \
     apt-get clean; rm -rf /var/lib/apt/lists/*
 
-# --- Chromium from build context -------------------------------------------
+# --- Optional vendored Chromium (offline fallback) -------------------------
+# desktop/vendor/chromium holds only a .gitkeep in the repo; a full build is
+# dropped in by scripts/fetch-chromium.sh for offline/air-gapped builds.
+# Runtime libs so a vendored (apt-independent) Chromium can start:
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libnss3 libatk1.0-0t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
+        libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+        libgbm1 libasound2t64 libpango-1.0-0 libcairo2 libgtk-3-0t64 && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY vendor/chromium/ /opt/chromium/
 COPY chromium.sh /usr/local/bin/chromium
 COPY chromium.desktop /usr/share/applications/chromium.desktop
-RUN chmod 755 /usr/local/bin/chromium && chmod -R a+rX /opt/chromium
+RUN chmod 755 /usr/local/bin/chromium && chmod -R a+rX /opt/chromium 2>/dev/null || true
 
 # --- Session user ----------------------------------------------------------
 # DESKTOP_USER is the login name; ADMIN=1 grants sudo (password required).

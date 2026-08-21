@@ -2,10 +2,11 @@
 #
 # CloudPC one-command deployment.
 #
-#   sudo ./setup.sh                # build + start the whole stack
+#   sudo ./setup.sh                # build + start + firewall/fail2ban
 #
-# On a fresh Ubuntu VPS, run scripts/host-security.sh first (firewall +
-# fail2ban), or let this script call it with SETUP_HOST=1.
+# Run as root on a fresh Ubuntu VPS. Host hardening (UFW default-deny +
+# fail2ban) runs by default; opt out with SKIP_HOST=1. Browsers install
+# from apt (no Node.js); set OFFLINE_CHROMIUM=1 to vendor Chromium instead.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,13 +33,14 @@ if [[ ! -s secrets/admin_unix_password ]]; then
     (umask 077; openssl rand -base64 18 | tr -d '/+=' | head -c 16 > secrets/admin_unix_password)
 fi
 
-# --- Chromium payload -------------------------------------------------------
-# The desktop image copies a Chromium build from desktop/vendor/chromium.
-# scripts/fetch-chromium.sh populates it (from a local Playwright install
-# or by downloading a Playwright Chromium build).
-if [[ ! -x desktop/vendor/chromium/chrome ]]; then
-    log "Populating Chromium payload..."
-    ./scripts/fetch-chromium.sh
+# --- Chromium payload (optional offline fallback) ---------------------------
+# The desktop image installs Chromium from apt (xtradeb PPA) by default, so
+# nothing is needed here for a normal networked VPS. For air-gapped or
+# PPA-restricted builds, set OFFLINE_CHROMIUM=1 to vendor a Chromium build
+# into desktop/vendor/chromium (needs a local Playwright cache or npx).
+if [[ "${OFFLINE_CHROMIUM:-0}" == "1" && ! -x desktop/vendor/chromium/chrome ]]; then
+    log "OFFLINE_CHROMIUM=1: vendoring a Chromium build for the image..."
+    ./scripts/fetch-chromium.sh || die "could not vendor Chromium (see scripts/fetch-chromium.sh)"
 fi
 
 # --- Base image (built locally from Ubuntu archives — no registry needed) ---
@@ -67,9 +69,21 @@ if [[ ! -s data/auth/users.json ]]; then
         docker compose restart proxy >/dev/null
 fi
 
-# --- Host firewall + fail2ban (opt-in from setup) ---------------------------
-if [[ "${SETUP_HOST:-0}" == "1" ]]; then
-    ./scripts/host-security.sh
+# --- Host firewall + fail2ban (default ON; the spec requires them) ----------
+# Set SKIP_HOST=1 to opt out (e.g. when a firewall is managed elsewhere).
+# host-security.sh allows OpenSSH before enabling UFW, so SSH stays reachable.
+# Best-effort: a failure here (no systemd, unusual host) must not abort setup.
+HOST_HARDENED="no"
+if [[ "${SKIP_HOST:-0}" != "1" ]]; then
+    if [[ $EUID -eq 0 ]]; then
+        if ./scripts/host-security.sh; then
+            HOST_HARDENED="yes"
+        else
+            log "WARNING: host hardening did not complete; run scripts/host-security.sh manually."
+        fi
+    else
+        log "Not root: skipping firewall/fail2ban. Run: sudo ./scripts/host-security.sh"
+    fi
 fi
 
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
@@ -85,8 +99,7 @@ cat <<EOF
  Admin sudo password (inside the admin desktop):
    secrets/admin_unix_password
 
- Production hardening:
-   sudo ./scripts/host-security.sh    # ufw default-deny + fail2ban
-   README.md                          # Let's Encrypt TLS setup
+ Host firewall + fail2ban: ${HOST_HARDENED}$([ "$HOST_HARDENED" = no ] && echo "  (run: sudo ./scripts/host-security.sh)")
+ TLS: self-signed (replace with Let's Encrypt — see README.md)
 ===============================================================
 EOF

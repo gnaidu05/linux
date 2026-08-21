@@ -1,5 +1,9 @@
 secrets/
 data/
-desktop/vendor/
+# Keep the vendored-Chromium directory (with its placeholder) tracked so the
+# desktop image's COPY works on a fresh clone, but never commit the large
+# binary that scripts/fetch-chromium.sh drops in for offline builds.
+desktop/vendor/chromium/*
+!desktop/vendor/chromium/.gitkeep
 .pw-cache/
 __pycache__/

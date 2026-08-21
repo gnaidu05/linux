@@ -3,7 +3,16 @@
 location /desktop/__USER__/ {
     auth_request /_verify;
 
-    proxy_pass http://__UPSTREAM__:6901/;
+    # Re-resolve the upstream at request time via Docker's embedded DNS so a
+    # restarted desktop container (new IP) does not leave this route pinned
+    # to a stale address (502). Using a variable forces runtime resolution;
+    # the rewrite reproduces the trailing-slash prefix strip that a literal
+    # proxy_pass with a path would do.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $up___USER__ __UPSTREAM__;
+    rewrite ^/desktop/__USER__/(.*)$ /$1 break;
+    proxy_pass http://$up___USER__:6901;
+
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection $connection_upgrade;
