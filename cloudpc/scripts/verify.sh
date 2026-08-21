@@ -38,17 +38,59 @@ code=$($CURL -o /dev/null -w '%{http_code}' "$BASE/desktop/admin/")
 [ "$code" = "302" ] && ok "unauthenticated desktop -> 302 login" \
                     || bad "unauthenticated desktop -> 302 login (got $code)"
 
-# 5+6. Both users can log in and reach only their own desktop
-login() { # jar user pw -> outputs final http code of own desktop page
-    $CURL -c "$1" -o /dev/null -d "username=$2&password=$3" "$BASE/login"
+# 5. Forced password change on first login (throwaway probe user).
+#    A fresh account must be sent to /change-password and blocked from its
+#    desktop until the password is changed.
+PROBE="probe_$$"
+docker compose exec -T auth python3 /app/manage.py add "$PROBE" --role user \
+    --password 'ProbeInit!2026x' >/dev/null 2>&1
+JP=$(mktemp)
+redir=$($CURL -c "$JP" -o /dev/null -w '%{redirect_url}' \
+        -d "username=$PROBE&password=ProbeInit!2026x" "$BASE/login")
+case "$redir" in
+  *change-password*) ok "first login forces password change (redirect to /change-password)";;
+  *) bad "first login forces password change (got redirect: $redir)";;
+esac
+# via the public path: desktop blocked (302 to login) while must_change set
+code=$($CURL -b "$JP" -o /dev/null -w '%{http_code}' "$BASE/desktop/$PROBE/vnc.html")
+[ "$code" = "302" ] && ok "desktop blocked until password changed (302)" \
+                    || bad "desktop blocked until password changed (got $code)"
+docker compose exec -T auth python3 /app/manage.py del "$PROBE" >/dev/null 2>&1
+rm -f "$JP"
+
+# Activate the two real accounts through the first-login change flow, then
+# use the rotated passwords for the steady-state tests below. This also
+# exercises the password-quality policy (a weak new password is rejected).
+# Rotated passwords must NOT contain the username (policy rejects that),
+# so avoid the substrings "admin"/"user".
+NADMIN="Rotated-9x!Kbtqwm"; NUSER="Shifted-7z!Pmvnrt"
+activate() { # jar user current_pw new_pw
+    local jar="$1" u="$2" cur="$3" new="$4" redir
+    redir=$($CURL -c "$jar" -o /dev/null -w '%{redirect_url}' \
+            -d "username=$u&password=$cur" "$BASE/login")
+    if printf '%s' "$redir" | grep -q change-password; then
+        # reject weak password first (evidence of policy), then set strong one
+        weak=$($CURL -b "$jar" -o /dev/null -w '%{http_code}' \
+               -d "current=$cur&new=weak&confirm=weak" "$BASE/change-password")
+        [ "$weak" = "400" ] && ok "$u: weak new password rejected (400)" \
+                            || bad "$u: weak new password rejected (got $weak)"
+        $CURL -b "$jar" -c "$jar" -o /dev/null \
+              -d "current=$cur&new=$new&confirm=$new" "$BASE/change-password"
+    fi
+}
+# 6. Both users can log in and reach only their own desktop (post-activation)
+reach() { # jar user pw -> http code of own desktop
+    $CURL -c "$1" -b "$1" -o /dev/null -d "username=$2&password=$3" "$BASE/login"
     $CURL -b "$1" -o /dev/null -w '%{http_code}' "$BASE/desktop/$2/vnc.html"
 }
-[ "$(login "$J1" admin "$APW")" = "200" ] && ok "admin reaches own desktop (vnc.html 200)" \
-                                          || bad "admin reaches own desktop"
-[ "$(login "$J2" user  "$UPW")" = "200" ] && ok "user reaches own desktop (vnc.html 200)" \
-                                          || bad "user reaches own desktop"
+activate "$J1" admin "$APW" "$NADMIN"
+activate "$J2" user  "$UPW" "$NUSER"
+[ "$(reach "$J1" admin "$NADMIN")" = "200" ] && ok "admin reaches own desktop (vnc.html 200)" \
+                                             || bad "admin reaches own desktop"
+[ "$(reach "$J2" user  "$NUSER")" = "200" ] && ok "user reaches own desktop (vnc.html 200)" \
+                                            || bad "user reaches own desktop"
 
-# 7. Cross-user access denied
+# 7. Cross-user access denied (user session cannot reach admin desktop)
 code=$($CURL -b "$J2" -o /dev/null -w '%{http_code}' "$BASE/desktop/admin/vnc.html")
 [ "$code" = "403" ] && ok "user blocked from admin desktop (403)" \
                     || bad "user blocked from admin desktop (got $code)"
@@ -81,7 +123,8 @@ echo "$(cat secrets/admin_unix_password)" | docker exec -i cloudpc-desktop-admin
     && ok "admin sudo works (password required)" || bad "admin sudo works"
 docker exec cloudpc-desktop-user-1 sudo -n id >/dev/null 2>&1 \
     && bad "standard user has no sudo" || ok "standard user has no sudo"
-docker exec cloudpc-desktop-admin-1 passwd -S root 2>/dev/null | grep -qE ' L ' \
+# inspect as root (dockerd is root) — the desktop user cannot read shadow
+docker exec -u root cloudpc-desktop-admin-1 passwd -S root 2>/dev/null | grep -qE ' L ' \
     && ok "root locked in desktop" || bad "root locked in desktop"
 
 # 12. Container hardening flags
